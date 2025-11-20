@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dungeon Fit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* --- Core Pixel Art Styles --- */
+        :root {
+            --bg-dark: #1a1a1a;
+            --bg-panel: #2d2d2d;
+            --ui-blue: #5dabe8;
+            --ui-blue-dark: #3a7ab0;
+            --ui-border: #5d5da8;
+            --text-white: #ffffff;
+            --pixel-size: 4px; /* Global scaling factor */
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-font-smoothing: none;
+        }
+
+        /* --- UTILITIES --- */
+        .pixel-text-shadow {
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* --- BACKGROUNDS --- */
+        .bg-brick-wall {
+            background-color: #2d241f;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%233e2b22' d='M0 0h16v14H0V0zm18 16h14v14H18V16z'/%3E%3Cpath fill='%234a3627' d='M1 1h14v12H1V1zm18 17h12v12H19V17z'/%3E%3C/svg%3E");
+            image-rendering: pixelated;
+        }
+
+        .bg-inventory {
+            background-color: #111;
+            background-image: 
+                radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 80%),
+                url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23ffffff' fill-opacity='0.03'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23ffffff' fill-opacity='0.03'/%3E%3C/svg%3E");
+        }
+
+        .bg-title-sky {
+            background: linear-gradient(to bottom, #0f172a 0%, #1e293b 40%, #475569 100%);
+        }
+
+        /* --- UI COMPONENTS --- */
+        
+        /* 3D Button */
+        .btn-3d {
+            background-color: var(--ui-blue);
+            color: #fff;
+            border: none;
+            position: relative;
+            box-shadow: 
+                inset 2px 2px 0px #8ecaf5,
+                inset -2px -2px 0px #2c5d8a,
+                0 4px 0px #1e4060, 
+                0 6px 4px rgba(0,0,0,0.4);
+            transition: transform 0.05s, box-shadow 0.05s;
+            cursor: pointer;
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 
+                inset 2px 2px 0px #8ecaf5,
+                inset -2px -2px 0px #2c5d8a,
+                0 0 0px #1e4060,
+                0 2px 2px rgba(0,0,0,0.4);
+        }
+        .btn-3d:disabled {
+            background-color: #555;
+            color: #888;
+            box-shadow: inset 2px 2px 0px #666, inset -2px -2px 0px #333;
+            transform: none;
+            cursor: not-allowed;
+        }
+        
+        /* Alternate Dark Button */
+        .btn-3d-dark {
+            background-color: #334155;
+            color: #cbd5e1;
+            box-shadow: 
+                inset 2px 2px 0px #475569,
+                inset -2px -2px 0px #1e293b,
+                0 4px 0px #0f172a, 
+                0 6px 4px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+        .btn-3d-dark:active {
+            transform: translateY(4px);
+            box-shadow: 
+                 inset 2px 2px 0px #475569,
+                inset -2px -2px 0px #1e293b,
+                0 0 0px #0f172a, 
+                0 2px 2px rgba(0,0,0,0.4);
+        }
+
+        /* Inventory Slot - Bracket Style */
+        .slot-bracket {
+            background-color: rgba(0, 0, 0, 0.5);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* Top corners */
+            background-image: 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0);
+            background-repeat: no-repeat;
+            background-size: 8px 2px, 2px 8px, 8px 2px, 2px 8px;
+            background-position: top left, top left, top right, top right;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid rgba(58, 122, 176, 0.2);
+        }
+        /* Bottom corners */
+        .slot-bracket::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0), 
+                linear-gradient(#3a7ab0, #3a7ab0);
+            background-repeat: no-repeat;
+            background-size: 8px 2px, 2px 8px, 8px 2px, 2px 8px;
+            background-position: bottom left, bottom left, bottom right, bottom right;
+            pointer-events: none;
+        }
+        .slot-bracket i {
+            filter: drop-shadow(0 0 4px #3a7ab0);
+        }
+
+        /* Top Status Bar Elements */
+        .status-pill {
+            background: #333;
+            border: 2px solid #444;
+            box-shadow: 2px 2px 0 #000;
+            display: flex;
+            align-items: stretch;
+            height: 28px;
+        }
+        .status-label {
+            background: #5d5da8;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 8px;
+            font-size: 10px;
+            border-right: 2px solid #444;
+            font-weight: bold;
+        }
+
+        /* Progress Bar */
+        .pixel-progress {
+            position: relative;
+            height: 8px;
+            background: #111;
+            border: 2px solid #333;
+        }
+        .pixel-progress-fill {
+            height: 100%;
+            background: var(--fill-color, #5dabe8);
+            box-shadow: inset 0 2px 0 rgba(255,255,255,0.3);
+            transition: width 0.5s ease-out;
+        }
+
+        /* --- 3D PIXEL CHARACTERS (CSS ENGINE) --- */
+        .pixel-model {
+            transform-style: preserve-3d;
+            transform: rotateY(-15deg) rotateX(10deg);
+            position: relative;
+            pointer-events: auto;
+        }
+        .p {
+            position: absolute;
+            width: var(--pixel-size); 
+            height: var(--pixel-size);
+            background-color: var(--c);
+            box-shadow: 
+                var(--pixel-size) 0 0 var(--c-side), /* Right side */
+                0 var(--pixel-size) 0 var(--c-bot);  /* Bottom side */
+        }
+        /* Colors */
+        .c-hair { --c: #5d4037; --c-side: #3e2723; --c-bot: #3e2723; }
+        .c-skin { --c: #ffccbc; --c-side: #e6a695; --c-bot: #e6a695; }
+        .c-shirt { --c: #eee; --c-side: #bdbdbd; --c-bot: #bdbdbd; }
+        .c-pants { --c: #3e2723; --c-side: #281a16; --c-bot: #281a16; }
+        .c-wolf { --c: #78909c; --c-side: #546e7a; --c-bot: #546e7a; }
+        .c-wolf-dark { --c: #546e7a; --c-side: #37474f; --c-bot: #37474f; }
+
+        /* ANIMATIONS */
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.03); } }
+        
+        .anim-float { animation: float 3s ease-in-out infinite; }
+        .anim-breathe { animation: breathe 2s ease-in-out infinite; transform-origin: bottom; }
+
+        /* Quest Tab Active State */
+        .quest-tab[data-active="true"] {
+            border-bottom-width: 4px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body class="h-screen w-full flex justify-center items-center bg-gray-900">
+
+    <div id="app-container" class="relative w-full h-full max-w-[420px] bg-[#1a1a1a] overflow-hidden shadow-[0_0_0_4px_#333] flex flex-col">
+
+        <!-- ================== SCREEN 1: TITLE ================== -->
+        <div id="screen-title" class="absolute inset-0 z-50 flex flex-col items-center bg-title-sky pt-20">
+            <div class="absolute top-12 right-8 w-24 h-24 rounded-full bg-[#fcd34d] opacity-90 shadow-[0_0_40px_#fcd34d]"></div>
+            <div class="absolute inset-0 opacity-70" style="background-image: radial-gradient(white 1px, transparent 1px); background-size: 50px 50px;"></div>
+            <div class="absolute bottom-0 w-full h-[60%] z-0 opacity-80 bg-contain bg-bottom bg-no-repeat" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 60\' preserveAspectRatio=\'none\' shape-rendering=\'crispEdges\'%3E%3Cpath fill=\'%231e293b\' d=\'M0,60 L0,30 L10,30 L10,25 L15,25 L15,20 L25,20 L25,25 L30,25 L30,30 L35,30 L35,20 L40,20 L40,15 L50,15 L50,20 L55,20 L55,30 L60,30 L60,20 L65,20 L65,15 L75,15 L75,20 L80,20 L80,30 L90,30 L90,25 L95,25 L95,20 L100,20 L100,60 Z\'/%3E%3Cpath fill=\'%230f172a\' d=\'M0,60 L0,40 L5,40 L5,35 L20,35 L20,40 L30,40 L30,35 L45,35 L45,45 L55,45 L55,35 L70,35 L70,40 L80,40 L80,35 L95,35 L95,40 L100,40 L100,60 Z\'/%3E%3C/svg%3E');"></div>
+
+            <div class="relative z-10 flex flex-col items-center w-full mt-10">
+                <h1 class="text-[48px] text-gray-200 mb-4 tracking-tighter drop-shadow-[4px_4px_0_#000] leading-none" style="-webkit-text-stroke: 2px #000;">DUNGEON</h1>
+                <div class="flex items-center justify-center gap-2 mb-20 transform translate-x-1">
+                    <span class="text-[90px] font-bold text-[#5dabe8] drop-shadow-[6px_6px_0_#000] leading-none" style="-webkit-text-stroke: 3px #2c5d8a;">F</span>
+                    <div class="relative w-16 h-32 mx-[-10px] mt-4 z-10">
+                        <div class="w-6 h-16 bg-[#5d4037] mx-auto mt-12 border-r-4 border-b-4 border-black"></div>
+                        <div class="w-10 h-8 bg-[#555] mx-auto -mt-20 border-r-4 border-b-4 border-black shadow-lg"></div>
+                        <div class="w-8 h-14 bg-[#ff9100] mx-auto -mt-14 rounded-full blur-[2px] animate-pulse border-2 border-[#ffea00]"></div>
+                        <div class="w-4 h-8 bg-[#ffea00] mx-auto -mt-10 rounded-full blur-[1px]"></div>
+                    </div>
+                    <span class="text-[90px] font-bold text-[#5dabe8] drop-shadow-[6px_6px_0_#000] leading-none" style="-webkit-text-stroke: 3px #2c5d8a;">T</span>
+                </div>
+                <button onclick="navTo('dungeon')" class="btn-3d px-16 py-6 text-2xl tracking-[0.2em] font-bold hover:brightness-110 active:scale-95 transition-all transform -translate-y-4">START</button>
+            </div>
+        </div>
+
+        <!-- ================== HEADER / TOP BAR (SHARED) ================== -->
+        <!-- We'll clone this or move it into screens, but for simplicity, each screen has its own header copy to allow distinct states if needed. -->
+        
+        <!-- ================== SCREEN 2: DUNGEON HUB ================== -->
+        <div id="screen-dungeon" class="hidden absolute inset-0 z-40 flex flex-col bg-[#111]">
+            <div class="h-[60px] bg-[#1f1f1f] border-b-4 border-[#333] flex items-center justify-between px-4 z-20 relative">
+                <button onclick="toggleMenu(true)" class="text-gray-400 hover:text-white active:scale-90 transition-transform"><i class="ph-bold ph-list text-2xl"></i></button>
+                <div class="flex gap-3">
+                    <div class="status-pill">
+                        <div class="status-label">1</div>
+                        <div class="px-3 flex items-center text-[10px] tracking-wide text-gray-300">ITNOK</div>
+                    </div>
+                    <div class="status-pill px-3 gap-2 items-center">
+                        <i class="ph-fill ph-key text-yellow-500 text-xs drop-shadow-[1px_1px_0_black]"></i>
+                        <span class="text-[10px] text-gray-300" id="key-count">20/20</span>
+                    </div>
+                </div>
+                <div onclick="toggleNotifications(true)" class="relative cursor-pointer active:scale-90 transition-transform">
+                    <i class="ph-fill ph-bell text-2xl text-gray-400 hover:text-white"></i>
+                    <div id="notif-dot" class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1f1f1f]"></div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto floor-scroll flex flex-col justify-end bg-[#0c0c0c] pb-4">
+                <div class="h-28 flex items-center justify-center opacity-30 border-b-4 border-[#1a1a1a] bg-[repeating-linear-gradient(45deg,#111,#111_10px,#1a1a1a_10px,#1a1a1a_20px)]"><div class="flex flex-col items-center"><i class="ph-fill ph-lock-key text-3xl mb-2 text-[#555] drop-shadow-[2px_2px_0_#000]"></i><span class="text-[10px] text-[#555]">FLOOR 5</span></div></div>
+                <div class="h-28 flex items-center justify-center opacity-40 border-b-4 border-[#1a1a1a] bg-[repeating-linear-gradient(45deg,#111,#111_10px,#1a1a1a_10px,#1a1a1a_20px)]"><div class="flex flex-col items-center"><i class="ph-fill ph-lock-key text-3xl mb-2 text-[#666] drop-shadow-[2px_2px_0_#000]"></i><span class="text-[10px] text-[#666]">FLOOR 4</span></div></div>
+                <div class="h-28 flex items-center justify-center opacity-50 border-b-4 border-[#1a1a1a] bg-[repeating-linear-gradient(45deg,#111,#111_10px,#1a1a1a_10px,#1a1a1a_20px)]"><div class="flex flex-col items-center"><i class="ph-fill ph-lock-key text-3xl mb-2 text-[#777] drop-shadow-[2px_2px_0_#000]"></i><span class="text-[10px] text-[#777]">FLOOR 3</span></div></div>
+                <div class="h-28 flex items-center justify-center opacity-60 border-b-4 border-[#1a1a1a] bg-[repeating-linear-gradient(45deg,#111,#111_10px,#1a1a1a_10px,#1a1a1a_20px)]"><div class="flex flex-col items-center"><i class="ph-fill ph-lock-key text-3xl mb-2 text-[#888] drop-shadow-[2px_2px_0_#000]"></i><span class="text-[10px] text-[#888]">FLOOR 2</span></div></div>
+                
+                <div class="bg-brick-wall relative h-60 w-full flex flex-col justify-end border-t-4 border-[#5d4037] shadow-[inset_0_20px_40px_rgba(0,0,0,0.8)]">
+                    <div class="relative w-full h-full flex items-end justify-between px-8 pb-10">
+                        <div class="pixel-model anim-breathe cursor-pointer hover:scale-110 transition-transform z-20" style="--pixel-size: 4px; width: 32px; height: 60px; transform: scale(3.5) rotateY(-15deg) rotateX(10deg); transform-origin: bottom center; margin-bottom: 50px; margin-left: 15px;">
+                            <div class="p c-pants" style="top:36px; left:8px; width:12px; height:20px;"></div>
+                            <div class="p c-shirt" style="top:16px; left:4px; width:20px; height:20px;"></div>
+                            <div class="p c-skin" style="top:16px; left:-4px; width:4px; height:12px;"></div>
+                            <div class="p c-skin" style="top:16px; left:28px; width:4px; height:12px;"></div>
+                            <div class="p c-skin" style="top:4px; left:6px; width:16px; height:12px;"></div>
+                            <div class="p c-hair" style="top:0px; left:6px; width:16px; height:4px;"></div>
+                            <div class="p c-hair" style="top:4px; left:4px; width:4px; height:8px;"></div>
+                            <div class="p c-hair" style="top:4px; left:20px; width:4px; height:8px;"></div>
+                            <div class="p" style="--c:#000;--c-side:#000;--c-bot:#000; top:8px; left:8px; width:4px; height:4px;"></div>
+                            <div class="p" style="--c:#000;--c-side:#000;--c-bot:#000; top:8px; left:16px; width:4px; height:4px;"></div>
+                        </div>
+                        <div class="mb-6 z-30">
+                            <button onclick="navTo('quests')" class="btn-3d text-[10px] px-5 py-2 font-bold tracking-wider uppercase transform scale-100 hover:brightness-110">Start Quest</button>
+                        </div>
+                        <div class="pixel-model anim-float z-20" style="--pixel-size: 4px; width: 48px; height: 40px; transform: scale(3.5) rotateY(-15deg) rotateX(10deg); transform-origin: bottom center; margin-bottom: 50px; margin-right: 15px;">
+                            <div class="p c-wolf" style="top:12px; left:12px; width:24px; height:16px;"></div>
+                            <div class="p c-wolf" style="top:4px; left:0px; width:16px; height:16px;"></div>
+                            <div class="p c-wolf-dark" style="top:12px; left:-8px; width:8px; height:8px;"></div>
+                            <div class="p c-wolf" style="top:-4px; left:0px; width:4px; height:8px;"></div>
+                            <div class="p c-wolf" style="top:-4px; left:12px; width:4px; height:8px;"></div>
+                            <div class="p c-wolf-dark" style="top:28px; left:12px; width:8px; height:12px;"></div>
+                            <div class="p c-wolf-dark" style="top:28px; left:28px; width:8px; height:12px;"></div>
+                            <div class="p c-wolf" style="top:4px; left:36px; width:8px; height:16px;"></div>
+                        </div>
+                    </div>
+                    <div class="absolute bottom-0 w-full h-14 bg-[#3e2723] border-t-[6px] border-[#4e342e] shadow-[0_-10px_30px_rgba(0,0,0,0.8)] flex items-center justify-center z-10">
+                        <div class="w-full h-full opacity-10 bg-[repeating-linear-gradient(90deg,transparent,transparent_20px,#000_20px,#000_22px)]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================== SCREEN 3: INVENTORY ================== -->
+        <div id="screen-character" class="hidden absolute inset-0 z-40 flex flex-col bg-inventory">
+            <div class="relative z-10 pt-8 pb-2 flex justify-center items-center gap-8 shrink-0">
+                <button class="text-gray-500 hover:text-white active:scale-90"><i class="ph-bold ph-caret-left text-3xl"></i></button>
+                <h2 class="text-xl text-white tracking-[0.3em] font-bold drop-shadow-[3px_3px_0_#000]">NOVICE</h2>
+                <button class="text-gray-500 hover:text-white active:scale-90"><i class="ph-bold ph-caret-right text-3xl"></i></button>
+            </div>
+            <div class="flex-1 flex flex-col px-4 pb-24 overflow-y-auto">
+                <div class="flex flex-row justify-between items-center mb-4 pt-2 relative z-20">
+                    <div class="flex flex-col gap-2 w-[70px]">
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">SWORD</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">ACC</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">BELT</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">GLOVE</span></div>
+                    </div>
+                    <!-- High Res 3D Pixel Human -->
+                    <div class="flex-1 flex flex-col items-center justify-end relative self-end pt-8 pb-2"> 
+                        <div class="pixel-model anim-breathe z-20" style="--pixel-size: 4px; width: 40px; height: 110px; transform: scale(3.2) rotateY(-10deg) rotateX(5deg); transform-origin: bottom center; margin-bottom: 20px;"> 
+                            <div class="p c-skin" style="top:0px; left:14px; width:12px; height:14px;"></div>
+                            <div class="p c-hair" style="top:-2px; left:12px; width:16px; height:6px;"></div>
+                            <div class="p c-hair" style="top:2px; left:12px; width:4px; height:10px;"></div> 
+                            <div class="p c-hair" style="top:2px; left:24px; width:2px; height:8px;"></div>  
+                            <div class="p" style="--c:#000;--c-side:#000;--c-bot:#000; top:6px; left:20px; width:2px; height:2px;"></div>
+                            <div class="p" style="--c:#000;--c-side:#000;--c-bot:#000; top:6px; left:14px; width:2px; height:2px;"></div> 
+                            <div class="p c-skin" style="top:14px; left:16px; width:8px; height:4px;"></div>
+                            <div class="p c-shirt" style="top:18px; left:10px; width:20px; height:30px;"></div>
+                            <div class="p" style="--c:#e0e0e0;--c-side:#bdbdbd;--c-bot:#bdbdbd; top:18px; left:8px; width:4px; height:28px;"></div>
+                            <div class="p c-skin" style="top:18px; left:4px; width:6px; height:26px;"></div>
+                            <div class="p c-skin" style="top:18px; left:30px; width:6px; height:24px;"></div>
+                            <div class="p c-skin" style="top:42px; left:32px; width:6px; height:6px;"></div>
+                            <div class="p" style="--c:#281a16;--c-side:#1a1a1a;--c-bot:#1a1a1a; top:48px; left:10px; width:20px; height:4px;"></div>
+                            <div class="p c-pants" style="top:52px; left:10px; width:8px; height:50px;"></div>
+                            <div class="p c-pants" style="top:52px; left:22px; width:8px; height:24px;"></div> 
+                            <div class="p c-pants" style="top:74px; left:24px; width:8px; height:26px;"></div> 
+                            <div class="p" style="--c:#1a1a1a;--c-side:#000;--c-bot:#000; top:102px; left:8px; width:12px; height:4px;"></div> 
+                            <div class="p" style="--c:#1a1a1a;--c-side:#000;--c-bot:#000; top:100px; left:24px; width:12px; height:4px;"></div>
+                        </div>
+                        <div class="w-48 h-16 z-10 relative -mt-4">
+                            <div class="w-full h-6 bg-[#558b2f] rounded-t-md border-t-4 border-[#7cb342]"></div>
+                            <div class="w-full h-10 bg-[#3e2723] border-x-4 border-b-4 border-[#281a16] rounded-b-md relative overflow-hidden">
+                                <div class="absolute top-2 left-4 w-2 h-2 bg-[#4e342e]"></div>
+                                <div class="absolute bottom-2 right-8 w-2 h-2 bg-[#4e342e]"></div>
+                                <div class="absolute top-4 right-4 w-2 h-2 bg-[#4e342e] opacity-50"></div>
+                            </div>
+                            <div class="absolute -bottom-4 left-2 right-2 h-4 bg-black opacity-50 rounded-full blur-md"></div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2 w-[70px]">
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">HELM</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">CHEST</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">LEGS</span></div>
+                        <div class="slot-bracket aspect-square w-full"><i class="ph-bold ph-plus text-[#3a7ab0] text-xl"></i><span class="text-[6px] text-gray-400 mt-1 tracking-widest">BOOTS</span></div>
+                    </div>
+                </div>
+                <div class="w-full text-center mb-2">
+                     <span class="text-[10px] text-[#5dabe8] tracking-widest border-b border-[#3a7ab0]">COMBAT POWER: 12,450</span>
+                </div>
+                <div class="slot-bracket w-full p-3 flex flex-col gap-2 relative mt-1 shadow-lg">
+                    <div class="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#111] px-2 text-[8px] text-[#3a7ab0] tracking-widest border border-[#3a7ab0]">STATS</div>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-3 mt-1">
+                        <div class="flex justify-between items-center border-b border-[#3a7ab0] border-opacity-30 pb-1">
+                            <span class="text-[8px] text-[#5dabe8] tracking-wider">ATK</span><span class="text-[8px] text-white pixel-text-shadow">125</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-[#3a7ab0] border-opacity-30 pb-1">
+                            <span class="text-[8px] text-[#5dabe8] tracking-wider">DEF</span><span class="text-[8px] text-white pixel-text-shadow">84</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-[#3a7ab0] border-opacity-30 pb-1">
+                            <span class="text-[8px] text-[#5dabe8] tracking-wider">HP</span><span class="text-[8px] text-white pixel-text-shadow">1200</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-[#3a7ab0] border-opacity-30 pb-1">
+                            <span class="text-[8px] text-[#5dabe8] tracking-wider">SPD</span><span class="text-[8px] text-white pixel-text-shadow">14</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="alert('Auto-equip feature coming in next update!')" class="btn-3d flex-1 py-3 text-[8px] tracking-widest active:scale-95 transition-transform">AUTO EQUIP</button>
+                    <button onclick="navTo('character')" class="btn-3d-dark flex-1 py-3 text-[8px] tracking-widest active:scale-95 transition-transform">DETAILS</button>
+                </div>
+                <div class="mt-4 mb-4">
+                    <div class="flex justify-between items-end mb-2 px-1 border-b border-[#333] pb-1">
+                        <span class="text-[8px] text-gray-400 tracking-widest">BACKPACK</span>
+                        <span class="text-[6px] text-[#5dabe8]">12/50</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2">
+                        <div class="slot-bracket aspect-square w-full bg-opacity-20 bg-blue-900 flex items-center justify-center"><i class="ph-fill ph-sword text-[#5dabe8]"></i></div>
+                        <div class="slot-bracket aspect-square w-full bg-opacity-20 bg-blue-900 flex items-center justify-center"><i class="ph-fill ph-shield text-[#5dabe8]"></i></div>
+                        <div class="slot-bracket aspect-square w-full bg-opacity-10 bg-gray-800"></div>
+                        <div class="slot-bracket aspect-square w-full bg-opacity-10 bg-gray-800"></div>
+                        <div class="slot-bracket aspect-square w-full bg-opacity-10 bg-gray-800"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================== SCREEN 4: QUESTS ================== -->
+        <div id="screen-quests" class="hidden absolute inset-0 z-40 flex flex-col bg-inventory">
+             <div class="relative z-10 pt-6 pb-2 flex justify-center items-center gap-4 shrink-0 bg-[#161616] border-b border-[#333]">
+                <button onclick="toggleMenu(true)" class="absolute left-4 text-gray-400 hover:text-white"><i class="ph-bold ph-list text-xl"></i></button>
+                <h2 class="text-lg text-white tracking-[0.2em] font-bold drop-shadow-[3px_3px_0_#000]">QUEST BOARD</h2>
+                <button onclick="toggleNotifications(true)" class="absolute right-4 text-gray-400 hover:text-white"><i class="ph-bold ph-bell text-xl"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+                
+                <!-- FEATURE 1: DAILY LOGIN STREAK -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-[#5dabe8] tracking-wider">LOGIN STREAK</span>
+                        <span class="text-[8px] text-gray-400">3/7 DAYS</span>
+                    </div>
+                    <div class="flex justify-between gap-1">
+                        <div class="flex-1 aspect-square bg-[#1a1a1a] border border-[#5dabe8] flex items-center justify-center relative">
+                             <i class="ph-fill ph-check text-green-400 text-xl"></i>
+                             <div class="absolute -bottom-3 text-[6px] text-gray-500">MON</div>
+                        </div>
+                        <div class="flex-1 aspect-square bg-[#1a1a1a] border border-[#5dabe8] flex items-center justify-center relative">
+                             <i class="ph-fill ph-check text-green-400 text-xl"></i>
+                             <div class="absolute -bottom-3 text-[6px] text-gray-500">TUE</div>
+                        </div>
+                        <div class="flex-1 aspect-square bg-[#1a1a1a] border-2 border-[#5dabe8] shadow-[0_0_10px_#5dabe8] flex items-center justify-center relative">
+                             <i class="ph-fill ph-gift text-yellow-400 text-xl animate-bounce"></i>
+                             <div class="absolute -bottom-3 text-[6px] text-white">WED</div>
+                        </div>
+                        <div class="flex-1 aspect-square bg-[#0f0f0f] border border-[#333] flex items-center justify-center relative opacity-50">
+                             <span class="text-[8px] text-gray-600">4</span>
+                        </div>
+                        <div class="flex-1 aspect-square bg-[#0f0f0f] border border-[#333] flex items-center justify-center relative opacity-50">
+                             <span class="text-[8px] text-gray-600">5</span>
+                        </div>
+                         <div class="flex-1 aspect-square bg-[#0f0f0f] border border-[#333] flex items-center justify-center relative opacity-50">
+                             <span class="text-[8px] text-gray-600">6</span>
+                        </div>
+                        <div class="flex-1 aspect-square bg-[#0f0f0f] border border-[#333] flex items-center justify-center relative opacity-50">
+                             <i class="ph-fill ph-crown text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FEATURE 2: QUEST TABS -->
+                <div class="flex gap-1 mb-4 mt-8 overflow-x-auto no-scrollbar">
+                    <button onclick="switchQuestTab('stronger')" class="quest-tab active flex-1 py-3 px-1 bg-[#333] text-[7px] whitespace-nowrap text-gray-400 border-b-2 border-transparent hover:text-white transition-colors data-[active]:text-[#5dabe8] data-[active]:border-[#5dabe8] data-[active]:bg-[#222]">GET STRONGER</button>
+                    <button onclick="switchQuestTab('gain')" class="quest-tab flex-1 py-3 px-1 bg-[#333] text-[7px] whitespace-nowrap text-gray-400 border-b-2 border-transparent hover:text-white transition-colors data-[active]:text-[#4ade80] data-[active]:border-[#4ade80] data-[active]:bg-[#222]">GAIN WEIGHT</button>
+                    <button onclick="switchQuestTab('lose')" class="quest-tab flex-1 py-3 px-1 bg-[#333] text-[7px] whitespace-nowrap text-gray-400 border-b-2 border-transparent hover:text-white transition-colors data-[active]:text-[#fb923c] data-[active]:border-[#fb923c] data-[active]:bg-[#222]">LOSE WEIGHT</button>
+                    <button onclick="switchQuestTab('history')" class="quest-tab flex-1 py-3 px-1 bg-[#333] text-[7px] whitespace-nowrap text-gray-400 border-b-2 border-transparent hover:text-white transition-colors data-[active]:text-[#a78bfa] data-[active]:border-[#a78bfa] data-[active]:bg-[#222]">HISTORY</button>
+                </div>
+
+                <!-- FEATURE 3: DYNAMIC CONTENT -->
+                <div id="quest-list" class="flex flex-col gap-3">
+                    <!-- Quest cards will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================== SCREEN 5: SKILLS (PLACEHOLDER) ================== -->
+        <div id="screen-skills" class="hidden absolute inset-0 z-40 flex flex-col bg-inventory">
+             <div class="relative z-10 pt-6 pb-2 flex justify-center items-center gap-4 shrink-0 bg-[#161616] border-b border-[#333]">
+                <h2 class="text-lg text-white tracking-[0.2em] font-bold drop-shadow-[3px_3px_0_#000]">SKILLS</h2>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <i class="ph-fill ph-scroll text-6xl text-[#555] mb-4"></i>
+                <p class="text-[#888] text-[10px] leading-6">Skill tree locked.<br>Level up to unlock abilities!</p>
+                <button onclick="navTo('dungeon')" class="mt-6 btn-3d px-4 py-2 text-[10px]">RETURN HOME</button>
+            </div>
+        </div>
+        
+        <!-- ================== SCREEN 6: CHARACTER (PROFILE) ================== -->
+        <!-- Mapped to "Character" in nav, shows same as Inventory for now but can be distinct if needed -->
+        <div id="screen-profile" class="hidden absolute inset-0 z-40 flex flex-col bg-inventory">
+             <div class="relative z-10 pt-6 pb-2 flex justify-center items-center gap-4 shrink-0 bg-[#161616] border-b border-[#333]">
+                <h2 class="text-lg text-white tracking-[0.2em] font-bold drop-shadow-[3px_3px_0_#000]">PROFILE</h2>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div class="w-20 h-20 bg-[#333] rounded-full border-4 border-[#5dabe8] mb-4 flex items-center justify-center overflow-hidden">
+                    <i class="ph-fill ph-user text-4xl text-gray-400"></i>
+                </div>
+                <h3 class="text-white text-sm mb-1">PLAYER 1</h3>
+                <p class="text-[#5dabe8] text-[10px] mb-6">Level 1 Novice</p>
+                
+                <div class="w-full bg-[#222] p-4 rounded border border-[#333] mb-4">
+                    <h4 class="text-left text-[8px] text-gray-400 mb-2">ATTRIBUTES</h4>
+                    <div class="flex justify-between text-[10px] text-white mb-1"><span>STR</span><span>12</span></div>
+                    <div class="flex justify-between text-[10px] text-white mb-1"><span>DEX</span><span>8</span></div>
+                    <div class="flex justify-between text-[10px] text-white mb-1"><span>INT</span><span>5</span></div>
+                </div>
+                <button onclick="navTo('character')" class="btn-3d w-full py-3 text-[10px]">MANAGE EQUIPMENT</button>
+            </div>
+        </div>
+
+        <!-- ================== MODAL: MENU ================== -->
+        <div id="modal-menu" class="hidden absolute inset-0 z-[60] bg-black/90 flex flex-col justify-center items-center p-8">
+            <h2 class="text-xl text-white mb-8 tracking-widest border-b-2 border-[#333] pb-2">MENU</h2>
+            <button onclick="resetData()" class="btn-3d-dark w-full py-4 mb-4 text-red-400 border-red-900">RESET PROGRESS</button>
+            <button onclick="toggleMenu(false)" class="text-gray-400 text-[10px] hover:text-white mt-4">CLOSE</button>
+        </div>
+
+        <!-- ================== MODAL: NOTIFICATIONS ================== -->
+        <div id="modal-notif" class="hidden absolute inset-0 z-[60] bg-black/90 flex flex-col justify-center items-center p-8">
+            <h2 class="text-xl text-white mb-8 tracking-widest border-b-2 border-[#333] pb-2">ALERTS</h2>
+            <div class="text-center text-gray-500 text-[10px] mb-8">No new notifications.</div>
+            <button onclick="toggleNotifications(false)" class="text-gray-400 text-[10px] hover:text-white mt-4">CLOSE</button>
+        </div>
+        
+        <!-- ================== MODAL: CAMERA PERMISSION ERROR ================== -->
+        <div id="modal-cam-error" class="hidden absolute inset-0 z-[70] bg-black/95 flex flex-col justify-center items-center p-8 text-center">
+            <i class="ph-fill ph-camera-slash text-4xl text-red-500 mb-4"></i>
+            <h3 class="text-white text-sm mb-2">CAMERA ACCESS DENIED</h3>
+            <p class="text-gray-400 text-[10px] mb-6 leading-relaxed">
+                We need camera access to verify your workout. Please check your browser settings and try again.
+            </p>
+            <button onclick="retryCamera()" class="btn-3d w-full py-3 text-[10px] mb-3">RETRY</button>
+            <button onclick="closeCamError()" class="text-gray-500 text-[10px]">CANCEL</button>
+        </div>
+
+        <!-- ================== SCREEN 7: CAMERA OVERLAY ================== -->
+        <div id="screen-camera" class="hidden absolute inset-0 z-50 bg-black">
+            <video id="camera-stream" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline></video>
+            <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/80 pointer-events-none"></div>
+
+            <div class="absolute top-0 left-0 w-full p-6 flex flex-col items-center z-10">
+                <div class="bg-red-600 text-white text-[8px] px-3 py-1 rounded-full animate-pulse mb-4 border border-red-400 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-white rounded-full"></div> LIVE
+                </div>
+                <h2 id="cam-quest-title" class="text-xl text-[#5dabe8] font-bold tracking-wider drop-shadow-md text-center mb-2 uppercase">QUEST NAME</h2>
+                <p class="text-[10px] text-white text-center max-w-[80%] leading-relaxed bg-black/50 p-2 rounded border border-white/20">
+                    Perform this exercise now while the camera is active to complete the quest.
+                </p>
+            </div>
+
+            <div class="absolute bottom-0 left-0 w-full p-6 pb-8 flex flex-col gap-4 z-10">
+                <button onclick="finishQuest()" class="btn-3d w-full py-4 text-[12px] tracking-[0.2em] font-bold hover:brightness-110 active:scale-95 transition-all border border-white/20">
+                    FINISH QUEST
+                </button>
+                <button onclick="stopQuest()" class="text-[10px] text-gray-400 hover:text-white underline tracking-widest text-center">
+                    CANCEL
+                </button>
+            </div>
+        </div>
+
+        <!-- ================== BOTTOM NAV ================== -->
+        <div id="bottom-nav" class="hidden absolute bottom-0 w-full bg-[#161616] border-t-2 border-[#333] z-50 flex justify-between items-end pb-3 pt-2 h-[74px]">
+            <div onclick="navTo('dungeon')" class="nav-item w-1/5 flex flex-col items-center cursor-pointer group" data-target="dungeon">
+                <div class="relative p-1 -mt-1">
+                    <i class="ph-fill ph-door-open text-2xl text-[#8d6e63] group-[.active]:text-[#ffb74d] transition-colors drop-shadow-[1px_1px_0_#000]"></i>
+                </div>
+                <span class="text-[8px] mt-1 text-gray-500 group-[.active]:text-white tracking-wide font-bold">DUNGEON</span>
+                <div class="h-[3px] w-8 mt-1.5 bg-transparent group-[.active]:bg-[#ffb74d] rounded-full shadow-[0_0_5px_orange]"></div>
+            </div>
+
+            <div onclick="navTo('character')" class="nav-item w-1/5 flex flex-col items-center cursor-pointer group" data-target="character">
+                <div class="relative p-1 -mt-1">
+                     <i class="ph-fill ph-backpack text-2xl text-[#8d6e63] group-[.active]:text-[#ffb74d] transition-colors drop-shadow-[1px_1px_0_#000]"></i>
+                </div>
+                <span class="text-[8px] mt-1 text-gray-500 group-[.active]:text-white tracking-wide font-bold">INVENTORY</span>
+                <div class="h-[3px] w-8 mt-1.5 bg-transparent group-[.active]:bg-[#ffb74d] rounded-full shadow-[0_0_5px_orange]"></div>
+            </div>
+
+            <div onclick="navTo('profile')" class="nav-item w-1/5 flex flex-col items-center cursor-pointer group" data-target="profile">
+                <div class="bg-[#333] p-1.5 rounded border border-[#444] mb-1 hover:bg-[#444] transition-colors">
+                    <i class="ph-fill ph-user text-2xl text-gray-400 group-[.active]:text-white"></i>
+                </div>
+                <span class="text-[8px] text-gray-500 group-[.active]:text-white tracking-wide font-bold">CHARACTER</span>
+                <div class="h-[3px] w-8 mt-1.5 bg-transparent group-[.active]:bg-[#ffb74d] rounded-full shadow-[0_0_5px_orange]"></div>
+            </div>
+
+            <div onclick="navTo('quests')" class="nav-item w-1/5 flex flex-col items-center cursor-pointer group" data-target="quests">
+                <div class="relative p-1 -mt-1"><i class="ph-fill ph-book-bookmark text-2xl text-[#8d6e63] group-[.active]:text-[#ffb74d] transition-colors drop-shadow-[1px_1px_0_#000]"></i></div>
+                <span class="text-[8px] mt-1 text-gray-500 group-[.active]:text-white tracking-wide font-bold">QUESTS</span>
+                <div class="h-[3px] w-8 mt-1.5 bg-transparent group-[.active]:bg-[#ffb74d] rounded-full shadow-[0_0_5px_orange]"></div>
+            </div>
+
+            <div onclick="navTo('skills')" class="nav-item w-1/5 flex flex-col items-center cursor-pointer group" data-target="skills">
+                <div class="relative p-1 -mt-1"><i class="ph-fill ph-scroll text-2xl text-[#8d6e63] group-[.active]:text-[#ffb74d] transition-colors drop-shadow-[1px_1px_0_#000]"></i></div>
+                <span class="text-[8px] mt-1 text-gray-500 group-[.active]:text-white tracking-wide font-bold">SKILLS</span>
+                <div class="h-[3px] w-8 mt-1.5 bg-transparent group-[.active]:bg-[#ffb74d] rounded-full shadow-[0_0_5px_orange]"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- USER STATE MANAGEMENT ---
+        // Load from localStorage or initialize default
+        let userState = JSON.parse(localStorage.getItem('dungeonFitState')) || {
+            completedQuests: [], 
+            historyLog: [],      
+            stats: {
+                stronger: 0,
+                gain: 0,
+                lose: 0
+            }
+        };
+
+        function saveState() {
+            localStorage.setItem('dungeonFitState', JSON.stringify(userState));
+        }
+        
+        function resetData() {
+            if(confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
+                userState = {
+                    completedQuests: [],
+                    historyLog: [],
+                    stats: { stronger: 0, gain: 0, lose: 0 }
+                };
+                saveState();
+                toggleMenu(false);
+                // If currently on stats tab, refresh it
+                const activeTabBtn = document.querySelector('.quest-tab[data-active="true"]');
+                if(activeTabBtn && activeTabBtn.getAttribute('onclick').includes('history')) {
+                    renderHistory();
+                } else if (document.getElementById('screen-quests').classList.contains('hidden') === false) {
+                     // Refresh current quest list to remove completed state
+                    const activeTab = document.querySelector('.quest-tab[data-active="true"]');
+                    if(activeTab) {
+                         const match = activeTab.getAttribute('onclick').match(/'([^']+)'/);
+                         if(match) switchQuestTab(match[1]);
+                    }
+                }
+                alert("Progress reset!");
+            }
+        }
+
+        // --- QUEST DATA ---
+        const questData = {
+            stronger: {
+                color: '#5dabe8',
+                icon: 'ph-barbell',
+                quests: [
+                    { title: "PLANK", desc: "Hold for 60 seconds", reward: 100, progress: "0/60s", fill: "0%" },
+                    { title: "BULGARIAN SPLIT SQUATS", desc: "3 Sets of 10 reps", reward: 150, progress: "0/3", fill: "0%" },
+                    { title: "AIR SQUAT", desc: "50 Reps total", reward: 120, progress: "20/50", fill: "40%" },
+                    { title: "ARM & LEG RAISED ROW", desc: "3 Sets of 12 reps", reward: 140, progress: "0/3", fill: "0%" },
+                    { title: "LUNGES", desc: "40 Reps (20 each leg)", reward: 130, progress: "10/40", fill: "25%" },
+                    { title: "PUSH UPS", desc: "Max reps in 2 mins", reward: 200, progress: "0/1", fill: "0%" },
+                    { title: "LEG CURL", desc: "3 Sets of 15 reps", reward: 110, progress: "1/3", fill: "33%" },
+                    { title: "HALF-SQUAT", desc: "Hold position 30s x 3", reward: 120, progress: "0/3", fill: "0%" },
+                    { title: "ABDOMINAL CURL", desc: "4 Sets of 15 reps", reward: 100, progress: "2/4", fill: "50%" },
+                    { title: "DEADLIFT", desc: "5 Sets of 5 heavy reps", reward: 300, progress: "0/5", fill: "0%" }
+                ]
+            },
+            gain: {
+                color: '#4ade80',
+                icon: 'ph-plus-circle',
+                quests: [
+                    { title: "SQUAT", desc: "5 Sets of 8 reps", reward: 200, progress: "0/5", fill: "0%" },
+                    { title: "BARBELL WALKING LUNGES", desc: "3 Sets of 12 steps", reward: 180, progress: "1/3", fill: "33%" },
+                    { title: "ROMANIAN DEADLIFT", desc: "4 Sets of 10 reps", reward: 220, progress: "0/4", fill: "0%" },
+                    { title: "LYING LEG-CURL", desc: "3 Sets of 15 reps", reward: 140, progress: "0/3", fill: "0%" },
+                    { title: "GIRONDA STERNUM CHIN-UPS", desc: "Max reps x 3 sets", reward: 250, progress: "0/3", fill: "0%" },
+                    { title: "BENT-OVER BARBELL ROW", desc: "4 Sets of 8 reps", reward: 190, progress: "2/4", fill: "50%" },
+                    { title: "PUSH-UPS", desc: "Weighted if possible 3x12", reward: 150, progress: "0/3", fill: "0%" },
+                    { title: "BARBELL SHOULDER PRESS", desc: "3 Sets of 8 reps", reward: 170, progress: "0/3", fill: "0%" },
+                    { title: "DUMBBELL LATERAL RAISE", desc: "Seated 3 Sets of 15", reward: 130, progress: "1/3", fill: "33%" },
+                    { title: "BARBELL FRONT RAISE", desc: "3 Sets of 12 reps", reward: 130, progress: "0/3", fill: "0%" }
+                ]
+            },
+            lose: {
+                color: '#fb923c',
+                icon: 'ph-fire',
+                quests: [
+                    { title: "WALL SLIDE LATERAL RAISE", desc: "3 Sets of 15 reps", reward: 120, progress: "0/3", fill: "0%" },
+                    { title: "PUSH-UPS", desc: "High tempo 3x15", reward: 140, progress: "1/3", fill: "33%" },
+                    { title: "BODYWEIGHT HAMMER CURLS", desc: "3 Sets of 12 reps", reward: 130, progress: "0/3", fill: "0%" },
+                    { title: "PLANK", desc: "3 rounds of 45s", reward: 150, progress: "0/3", fill: "0%" },
+                    { title: "BICYCLE CRUNCHES", desc: "50 Reps total", reward: 160, progress: "25/50", fill: "50%" },
+                    { title: "ASSISTED PULL-UP", desc: "3 Sets of 10 reps", reward: 180, progress: "0/3", fill: "0%" },
+                    { title: "SUPERMAN", desc: "Hold 3s, 15 reps", reward: 110, progress: "0/15", fill: "0%" },
+                    { title: "GLUTE KICKBACKS", desc: "20 reps each leg", reward: 140, progress: "0/40", fill: "0%" },
+                    { title: "DONKEY CALF RAISES", desc: "3 Sets of 20 reps", reward: 100, progress: "2/3", fill: "66%" },
+                    { title: "LUNGES AND SQUATS", desc: "Superset 3 rounds", reward: 250, progress: "0/3", fill: "0%" }
+                ]
+            }
+        };
+
+        const screens = {
+            title: document.getElementById('screen-title'),
+            dungeon: document.getElementById('screen-dungeon'),
+            character: document.getElementById('screen-character'),
+            profile: document.getElementById('screen-profile'),
+            quests: document.getElementById('screen-quests'),
+            skills: document.getElementById('screen-skills'),
+            camera: document.getElementById('screen-camera')
+        };
+        const bottomNav = document.getElementById('bottom-nav');
+        const navItems = document.querySelectorAll('.nav-item');
+        const questListEl = document.getElementById('quest-list');
+        const videoElement = document.getElementById('camera-stream');
+        let videoStream = null;
+        let activeQuest = { category: null, index: null, data: null };
+
+        function navTo(targetScreenName) {
+            // Hide all screens
+            Object.values(screens).forEach(el => el.classList.add('hidden'));
+            // Show target
+            if(screens[targetScreenName]) screens[targetScreenName].classList.remove('hidden');
+            
+            // Toggle Bottom Nav Visibility
+            if (targetScreenName === 'title' || targetScreenName === 'camera') {
+                bottomNav.classList.add('hidden');
+            } else {
+                bottomNav.classList.remove('hidden');
+            }
+
+            // Update Bottom Nav Active State
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if(item.dataset.target === targetScreenName) item.classList.add('active');
+            });
+
+            // Specific Init Logic
+            if(targetScreenName === 'quests') {
+                const activeTabBtn = document.querySelector('.quest-tab[data-active="true"]');
+                let currentCategory = 'stronger';
+                if (activeTabBtn) {
+                    const onClickAttr = activeTabBtn.getAttribute('onclick');
+                    const match = onClickAttr.match(/'([^']+)'/);
+                    if (match) currentCategory = match[1];
+                }
+                switchQuestTab(currentCategory);
+            }
+        }
+        
+        function switchQuestTab(categoryKey) {
+            // Update Tab Styling
+            document.querySelectorAll('.quest-tab').forEach(tab => {
+                if(tab.getAttribute('onclick').includes(categoryKey)) {
+                    tab.setAttribute('data-active', 'true');
+                } else {
+                    tab.removeAttribute('data-active');
+                }
+            });
+
+            questListEl.innerHTML = ''; // Clear current list
+
+            if (categoryKey === 'history') {
+                renderHistory();
+                return;
+            }
+
+            const data = questData[categoryKey];
+            if(!data) return;
+
+            data.quests.forEach((quest, index) => {
+                const questId = `${categoryKey}-${index}`;
+                const isCompleted = userState.completedQuests.includes(questId);
+
+                // Styling logic
+                const borderClass = categoryKey === 'stronger' ? 'border-[#5dabe8]' : 
+                                    categoryKey === 'gain' ? 'border-[#4ade80]' : 'border-[#fb923c]';
+                const textClass =   categoryKey === 'stronger' ? 'text-[#5dabe8]' : 
+                                    categoryKey === 'gain' ? 'text-[#4ade80]' : 'text-[#fb923c]';
+                const iconColor =   categoryKey === 'stronger' ? 'text-[#5dabe8]' : 
+                                    categoryKey === 'gain' ? 'text-[#4ade80]' : 'text-[#fb923c]';
+                
+                const containerOpacity = isCompleted ? 'opacity-50' : 'opacity-100';
+                const btnText = isCompleted ? 'COMPLETED' : 'START';
+                const btnAction = isCompleted ? '' : `onclick="startQuest('${categoryKey}', ${index})"`;
+                const btnState = isCompleted ? 'disabled' : '';
+                const btnBg = isCompleted ? 'bg-green-900 text-green-400 border-green-700' : `bg-[#333] ${textClass} border-[#444] hover:bg-[#444] hover:text-white`;
+                const progressText = isCompleted ? 'DONE' : quest.progress;
+                const fillWidth = isCompleted ? '100%' : quest.fill;
+                const fillColor = isCompleted ? '#4ade80' : data.color;
+
+                const cardHTML = `
+                    <div class="bg-[#1f1f1f] border-l-4 ${borderClass} p-3 shadow-md relative overflow-hidden group ${containerOpacity}">
+                        <div class="flex justify-between items-start mb-2 relative z-10">
+                            <div class="flex gap-3 items-center">
+                                <div class="w-8 h-8 bg-[#111] rounded flex items-center justify-center border border-[#333]">
+                                    <i class="ph-fill ${data.icon} ${iconColor} text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-[10px] text-white mb-1 uppercase">${quest.title}</h4>
+                                    <p class="text-[8px] text-gray-400">${quest.desc}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <div class="flex items-center gap-1 mb-1">
+                                    <i class="ph-fill ph-coin text-yellow-500 text-xs"></i>
+                                    <span class="text-[8px] text-yellow-500">${quest.reward}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between text-[6px] text-gray-500 mb-1">
+                                <span>PROGRESS</span>
+                                <span>${progressText}</span>
+                            </div>
+                            <div class="pixel-progress">
+                                <div class="pixel-progress-fill" style="width: ${fillWidth}; --fill-color: ${fillColor}"></div>
+                            </div>
+                        </div>
+                         <button ${btnAction} ${btnState} class="mt-3 w-full py-2 text-[8px] border transition-colors ${btnBg}">${btnText}</button>
+                    </div>
+                `;
+                questListEl.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        function renderHistory() {
+            // Stats
+            const statsHTML = `
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="bg-[#222] border border-[#5dabe8] p-2 rounded flex flex-col items-center">
+                        <i class="ph-fill ph-barbell text-[#5dabe8] mb-1"></i>
+                        <span class="text-[10px] text-white font-bold">${userState.stats.stronger}</span>
+                        <span class="text-[6px] text-gray-400">STRONGER</span>
+                    </div>
+                    <div class="bg-[#222] border border-[#4ade80] p-2 rounded flex flex-col items-center">
+                        <i class="ph-fill ph-plus-circle text-[#4ade80] mb-1"></i>
+                        <span class="text-[10px] text-white font-bold">${userState.stats.gain}</span>
+                        <span class="text-[6px] text-gray-400">GAIN</span>
+                    </div>
+                    <div class="bg-[#222] border border-[#fb923c] p-2 rounded flex flex-col items-center">
+                        <i class="ph-fill ph-fire text-[#fb923c] mb-1"></i>
+                        <span class="text-[10px] text-white font-bold">${userState.stats.lose}</span>
+                        <span class="text-[6px] text-gray-400">LOSE</span>
+                    </div>
+                </div>
+                <div class="border-b border-[#333] mb-4 pb-1">
+                    <span class="text-[8px] text-gray-400 tracking-widest">COMPLETION LOG</span>
+                </div>
+            `;
+            questListEl.insertAdjacentHTML('beforeend', statsHTML);
+
+            // Logs
+            if (userState.historyLog.length === 0) {
+                questListEl.insertAdjacentHTML('beforeend', `<div class="text-center text-[8px] text-gray-600 mt-4">No quests completed yet.</div>`);
+            } else {
+                [...userState.historyLog].reverse().forEach(log => {
+                    const date = new Date(log.date);
+                    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    
+                    let borderColor = '#444';
+                    if(log.category === 'stronger') borderColor = '#5dabe8';
+                    if(log.category === 'gain') borderColor = '#4ade80';
+                    if(log.category === 'lose') borderColor = '#fb923c';
+
+                    const logHTML = `
+                        <div class="bg-[#1a1a1a] border-l-2 p-2 flex justify-between items-center mb-2" style="border-color: ${borderColor}">
+                            <div>
+                                <h4 class="text-[8px] text-gray-200">${log.title}</h4>
+                                <span class="text-[6px] text-gray-500">${dateStr}</span>
+                            </div>
+                            <i class="ph-fill ph-check-circle text-green-500"></i>
+                        </div>
+                    `;
+                    questListEl.insertAdjacentHTML('beforeend', logHTML);
+                });
+            }
+        }
+
+        // --- MODAL LOGIC ---
+        function toggleMenu(show) {
+            document.getElementById('modal-menu').classList.toggle('hidden', !show);
+        }
+        
+        function toggleNotifications(show) {
+            document.getElementById('modal-notif').classList.toggle('hidden', !show);
+            if(show) document.getElementById('notif-dot').classList.add('hidden');
+        }
+
+        // --- CAMERA & QUEST LOGIC ---
+
+        async function startQuest(categoryKey, index) {
+            activeQuest = { 
+                category: categoryKey, 
+                index: index, 
+                data: questData[categoryKey].quests[index] 
+            };
+            
+            document.getElementById('cam-quest-title').innerText = activeQuest.data.title;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                videoElement.srcObject = stream;
+                videoStream = stream;
+                navTo('camera');
+            } catch (err) {
+                console.error("Camera error:", err);
+                document.getElementById('modal-cam-error').classList.remove('hidden');
+            }
+        }
+
+        function closeCamError() {
+            document.getElementById('modal-cam-error').classList.add('hidden');
+        }
+        
+        function retryCamera() {
+            closeCamError();
+            if (activeQuest.category && activeQuest.index !== null) {
+                startQuest(activeQuest.category, activeQuest.index);
+            }
+        }
+
+        function stopQuest() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            videoElement.srcObject = null;
+            navTo('quests');
+        }
+
+        function finishQuest() {
+            if (!activeQuest.data) return;
+
+            const questId = `${activeQuest.category}-${activeQuest.index}`;
+            
+            if (!userState.completedQuests.includes(questId)) {
+                userState.completedQuests.push(questId);
+                userState.stats[activeQuest.category]++;
+                userState.historyLog.push({
+                    title: activeQuest.data.title,
+                    category: activeQuest.category,
+                    date: new Date().toISOString()
+                });
+                saveState();
+            }
+            stopQuest();
+        }
+        
+        // Initial setup
+        // navTo('title'); // Uncommenting this would force start screen on reload
+        // Leaving commented allows seeing the last screen during development in some live servers
+    </script>
+</body>
+</html>
